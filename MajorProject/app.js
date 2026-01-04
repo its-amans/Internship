@@ -3,6 +3,8 @@ const app=express();
 const path=require("path");
 const Listing=require("./models/listing.js");
 const ejsMate = require('ejs-mate');
+const wrapAsync= require("./utils/wrapAsync.js");
+const ExpressError = require("./utils/ExpressError.js");
 
 app.engine('ejs', ejsMate);
 
@@ -47,31 +49,26 @@ app.get("/",(req,res)=>{
 //     res.send("Successful Listing");
 // });
 
-app.get("/listings",async (req,res)=>{
+app.get("/listings",wrapAsync(async (req,res)=>{
     let allListings=await Listing.find({});
 
     // console.log(allListings);
     // res.send("Working Well");
     res.render("listings/index.ejs",{allListings});
-});
+}));
 
 // create List
 app.get("/listings/new",(req,res)=>{
     res.render("listings/new.ejs");
 });
 
-app.post("/listings",async (req,res,next)=>{
+app.post("/listings",wrapAsync(async(req,res,next)=>{
 
     //1.either this 
-    try{
         const newListing=new Listing(req.body.listing);
     
         await newListing.save();
         res.redirect("/listings");
-    }
-    catch(err){
-        next(err);
-    }
 
     //2.oR this one
 
@@ -94,27 +91,27 @@ app.post("/listings",async (req,res,next)=>{
     // .catch((err)=>{console.log(err)});
     // console.log(newListing);
     // res.redirect("/listings");
-});
+}));
 
 //show 
 
-app.get("/listings/:id",async (req,res)=>{
+app.get("/listings/:id",wrapAsync(async (req,res)=>{
     let {id} =req.params;
     const listing = await Listing.findById(id);
     // console.log(listing);
     // res.send("well");
     res.render("listings/show.ejs",{listing});
-});
+}));
 
 //Update List
-app.get("/listings/:id/edit",async (req,res)=>{
+app.get("/listings/:id/edit",wrapAsync(async (req,res)=>{
     let {id} =req.params;
     const listing=await Listing.findById(id);
     console.log(listing);
     res.render("listings/edit.ejs",{listing});
-});
+}));
 
-app.put("/listings/:id",async (req,res)=>{
+app.put("/listings/:id",wrapAsync(async (req,res)=>{
     const {id}=req.params;
 
     const updateList=req.body.listing;
@@ -122,13 +119,13 @@ app.put("/listings/:id",async (req,res)=>{
     await Listing.findByIdAndUpdate(id,updateList);
 
     //In place of upper three lines we can directly write.
-    //await Listing.findByIdAndUpdate(id,{...req.body.listing});
+    //await Listing.findByIdAndUpdate(id,{...req.body.listing}); 
     
     res.redirect(`/listings/${id}`);
-});
+}));
 
 //Delete List
-app.delete("/listings/:id", async (req, res) => {
+app.delete("/listings/:id",wrapAsync( async (req, res) => {
     const { id } = req.params;
     const listing = await Listing.findById(id);
     //console.log("Deleting listing:", listing);
@@ -136,13 +133,18 @@ app.delete("/listings/:id", async (req, res) => {
     await Listing.findByIdAndDelete(id);
 
     res.redirect("/listings");
-});
+}));
 
 //Hnadling error
+app.all(/.*/,(req,res,next)=>{
+    next(new ExpressError(404, "Page Not Found"));
+});
 
 app.use((err,req,res,next)=>{
-    res.send("Something Went Wrong");
-})
+    let {statusCode = 500, message= "Something Went Wrong"}=err;
+    res.status(statusCode).render("error.ejs",{message});
+    // res.status(statusCode).send(message);  
+});
 
 app.listen(8080,()=>{
     console.log("Server is Listening to port 8080");
