@@ -5,6 +5,7 @@ const Listing=require("./models/listing.js");
 const ejsMate = require('ejs-mate');
 const wrapAsync= require("./utils/wrapAsync.js");
 const ExpressError = require("./utils/ExpressError.js");
+const listingSchema = require("./schema.js");
 
 app.engine('ejs', ejsMate);
 
@@ -35,6 +36,22 @@ app.get("/",(req,res)=>{
     res.send("Working Well");
 });
 
+
+const validateListing= (req,res,err)=>{
+    let {error} =listingSchema.validate(req.body);
+    //error handled by joi
+    if(error){
+        //to print the refrence message obj inside obj in error
+        let errMsg = error.details.map((el)=>
+            el.message).join(",");
+        throw new ExpressError(400, errMsg);
+    }
+    else{
+        next();
+    }
+}
+
+
 // app.get("/testListings",async (req,res)=>{
 //     const listingSample= new Listing({
 //         title:"Chandigarh Villa",
@@ -62,7 +79,7 @@ app.get("/listings/new",(req,res)=>{
     res.render("listings/new.ejs");
 });
 
-app.post("/listings",wrapAsync(async(req,res,next)=>{
+app.post("/listings", validateListing,wrapAsync(async(req,res,next)=>{
 
     //1.either this 
         const newListing=new Listing(req.body.listing);
@@ -111,7 +128,7 @@ app.get("/listings/:id/edit",wrapAsync(async (req,res)=>{
     res.render("listings/edit.ejs",{listing});
 }));
 
-app.put("/listings/:id",wrapAsync(async (req,res)=>{
+app.put("/listings/:id",validateListing,wrapAsync(async (req,res)=>{
     const {id}=req.params;
 
     const updateList=req.body.listing;

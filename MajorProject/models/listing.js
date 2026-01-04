@@ -22,6 +22,12 @@ const listingSchema=new Schema({
     },
     location:String,
     country:String,
+    reveiws:[
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Reveiw",
+        }, 
+    ],
 });
 
 const Listing = mongoose.model("Listing",listingSchema);
